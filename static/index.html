@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Agent Workbench</title>
+<style>
+:root{--bg:#0f1115;--card:#171a21;--line:#262b36;--text:#e8eaf0;--muted:#9aa3b2;--accent:#7c5cff;--green:#2fbf71;--red:#e5484d;--amber:#f5a524}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{padding:28px 32px 8px;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px}
+h1{margin:0;font-size:28px}header p{color:var(--muted);margin:6px 0 0;max-width:640px}
+main{padding:16px 32px 40px;max-width:1100px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.card b{font-size:28px;display:block}.card span{color:var(--muted);font-size:13px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin:12px 0}
+form{display:grid;grid-template-columns:1fr 2fr 140px 110px;gap:10px}
+input,select,button{border-radius:10px;border:1px solid var(--line);background:#0f1115;color:var(--text);padding:10px}
+button{background:var(--accent);border:none;cursor:pointer;font-weight:600}
+button.ghost{background:transparent;border:1px solid var(--line)}
+.task{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--line);align-items:center}
+.task:first-child{border-top:none}.task small{color:var(--muted)}
+.badge{padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700}
+.running{background:#1d2f4a}.completed{background:#14392a;color:#7ee2a8}.failed{background:#3d1f24;color:#ff9aa0}.stalled{background:#3d2f12;color:#ffcf7a}.queued{background:#2a2f3a}
+pre{background:#0b0d11;border:1px solid var(--line);border-radius:12px;padding:14px;white-space:pre-wrap;max-height:320px;overflow:auto}
+.filters{display:flex;gap:8px;flex-wrap:wrap}.filters button.active{outline:2px solid var(--accent)}
+@media(max-width:700px){.grid{grid-template-columns:1fr 1fr}form{grid-template-columns:1fr}}
+</style></head>
+<body>
+<header><div><h1>Agent Workbench</h1>
+<p>One panel for incompatible agents. Dispatch a task, watch its real process, and see honestly whether it is running, completed, failed, or stalled.</p></div>
+<div><small style="color:var(--muted)">Frankenstein track · Kiroween 2026</small></div></header>
+<main>
+<section class="grid">
+<div class="card"><b id="cTotal">0</b><span>Total tasks</span></div>
+<div class="card"><b id="cRunning">0</b><span>Running</span></div>
+<div class="card"><b id="cDone">0</b><span>Completed</span></div>
+<div class="card"><b id="cBad">0</b><span>Failed / stalled</span></div>
+</section>
+<section class="panel"><h2 style="margin-top:0">Dispatch a task</h2>
+<form id="f">
+<input name="title" placeholder="Task title, e.g. Summarise the README" required>
+<input name="prompt" placeholder="Prompt for the agent" required>
+<select name="adapter"><option value="demo">demo (no vendor CLI needed)</option><option value="codex">codex (needs OpenAI/Codex auth)</option><option value="claude">claude (needs Claude login/API key)</option><option value="kiro">kiro (needs Kiro login)</option></select>
+<button>Create task</button></form>
+<p style="color:var(--muted);font-size:13px">Status is derived from the live subprocess and its log file. Web-only tools are never shown as auto-monitored.</p></section>
+<section class="panel"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+<h2 style="margin:0">Tasks</h2><div class="filters" id="filters">
+<button data-f="all" class="active">All</button><button data-f="running">Running</button>
+<button data-f="completed">Completed</button><button data-f="failed">Failed</button><button data-f="stalled">Stalled</button></div></div>
+<div id="rows"></div></section>
+<section class="panel"><h2 style="margin-top:0">Log tail</h2><pre id="log">Select Log on a task to see its output here.</pre></section>
+</main>
+<script>
+let filter='all', tasks=[];
+document.querySelectorAll('#filters button').forEach(b=>b.onclick=()=>{filter=b.dataset.f;
+document.querySelectorAll('#filters button').forEach(x=>x.classList.toggle('active',x===b));render();});
+function render(){
+ const list=tasks.filter(t=>filter==='all'||t.status===filter);
+ document.getElementById('cTotal').textContent=tasks.length;
+ document.getElementById('cRunning').textContent=tasks.filter(t=>t.status==='running').length;
+ document.getElementById('cDone').textContent=tasks.filter(t=>t.status==='completed').length;
+ document.getElementById('cBad').textContent=tasks.filter(t=>t.status==='failed'||t.status==='stalled').length;
+ document.getElementById('rows').innerHTML=list.length?list.map(t=>`<div class="task"><div><b>${t.title}</b>
+ <small> · ${t.adapter} · exit ${t.exit_code ?? '—'}</small></div><div>
+ <span class="badge ${t.status}">${t.status}</span>
+ <button class="ghost" onclick="showLog('${t.id}')">Log</button>
+ <button class="ghost" onclick="act('${t.id}','stop')">Stop</button>
+ <button class="ghost" onclick="act('${t.id}','retry')">Retry</button></div></div>`).join(''):'<p style="color:var(--muted)">No tasks yet. Create one above.</p>';
+}
+async function load(){const r=await fetch('/api/tasks');tasks=await r.json();render();}
+async function showLog(id){const r=await fetch(`/api/tasks/${id}/log`);const d=await r.json();document.getElementById('log').textContent=d.log||'(no log output yet)';}
+async function act(id,a){await fetch(`/api/tasks/${id}/${a}`,{method:'POST'});load();}
+document.getElementById('f').onsubmit=async e=>{e.preventDefault();
+ const d=Object.fromEntries(new FormData(e.target));
+ await fetch('/api/tasks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});
+ e.target.reset(); load();};
+load(); setInterval(load,2000);
+</script></body></html>
