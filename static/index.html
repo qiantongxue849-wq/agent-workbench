@@ -39,7 +39,7 @@ pre{background:#0b0d11;border:1px solid var(--line);border-radius:12px;padding:1
 <form id="f">
 <input name="title" placeholder="Task title, e.g. Summarise the README" required>
 <input name="prompt" placeholder="Prompt for the agent" required>
-<select name="adapter"><option value="demo">demo (no vendor CLI needed)</option><option value="codex">codex (needs OpenAI/Codex auth)</option><option value="claude">claude (needs Claude login/API key)</option><option value="kiro">kiro (needs Kiro login)</option></select>
+<select name="adapter"><option value="demo">demo (no vendor CLI needed)</option><option value="free">free (public no-key API, demo only)</option><option value="codex">codex (needs OpenAI/Codex auth)</option><option value="claude">claude (needs Claude login/API key)</option><option value="kiro">kiro (needs Kiro login)</option></select>
 <button>Create task</button></form>
 <p style="color:var(--muted);font-size:13px">Status is derived from the live subprocess and its log file. Web-only tools are never shown as auto-monitored.</p></section>
 <section class="panel"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
