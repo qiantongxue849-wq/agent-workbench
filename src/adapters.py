@@ -25,6 +25,9 @@ ADAPTERS = {
     "codex": ["codex", "exec", "--skip-git-repo-check", "{prompt}"],
     "claude": ["claude", "-p", "{prompt}"],
     "kiro": ["kiro-cli", "chat", "--no-interactive", "--trust-workspace", "{prompt}"],
+    # Free demo adapter (public, no-key Pollinations text API).
+    # See src/free_api.py for its limits: demo only, not a vendor agent.
+    "free": ["python3", os.path.join(os.path.dirname(__file__), "free_api.py"), "{prompt}"],
 }
 
 
